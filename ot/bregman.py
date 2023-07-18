@@ -3807,12 +3807,11 @@ def screenkhorn(a, b, M, reg, ns_budget=None, nt_budget=None, uniform=False,
 
 ## Observations: 
 # OT Matrix => full of np.nan => issues with division and overflow in multiply
-# Not sure if I interpreted corretly some of the calculations in the original pseudo-code
+# Not sure if I interpreted corretly some of the calculations in the original pseudo-code (diag of a vector ?)
 
 
 
-def lowrank_sinkhorn(a, b, M, reg=0, metric='sqeuclidean',
-                     numIterMax=10000, stopThr=1e-9):
+def lowrank_sinkhorn(a, b, M, reg=0, numIterMax=10000, stopThr=1e-9):
     
     a, b, M = list_to_array(a, b, M)
     nx = get_backend(M, a, b)
@@ -3827,9 +3826,10 @@ def lowrank_sinkhorn(a, b, M, reg=0, metric='sqeuclidean',
 
     r = 3 # how to determine the rank r ?
     alpha = 1e-10 # how to pick alpha other than 1/r > alpha
+
     
-    L = nx.sqrt((2/(alpha**4))*nx.norm(M,2)**2 + (reg + (2/(alpha**3))*nx.norm(M,2))**2)
-    gamma = 1/(2*L(reg,alpha,M))
+    L = nx.sqrt((2/(alpha**4))*nx.norm(M)**2 + (reg + (2/(alpha**3))*nx.norm(M))**2) # default norm 2
+    gamma = 1/(2*L)
     
     # Start values for Q, R, g (not sure ???)
     Q, R, g = nx.ones((n,r)), nx.ones((m,r)), nx.ones((r,1)) 
@@ -3843,6 +3843,7 @@ def lowrank_sinkhorn(a, b, M, reg=0, metric='sqeuclidean',
         epsilon2 = nx.exp(-gamma*(M.T @ Q)*nx.diag(1/g) - ((gamma*reg)-1)*nx.log(R))
         omega = nx.diag(Q.T @ M @ R).reshape((-1,1))
         epsilon3 = nx.exp(gamma*omega/(g**2)) - (gamma*reg - 1)*nx.log(g)
+        n_iter = n_iter + 1
         
 
         #----------------------------------------------------------------------------------------#
@@ -3850,10 +3851,10 @@ def lowrank_sinkhorn(a, b, M, reg=0, metric='sqeuclidean',
         #----------------------------------------------------------------------------------------#
         
         # Initial inputs
-        q3_1, q3_2 = nx.ones((r,1), dtype=int), nx.ones((r,1), dtype=int)
-        v1_, v2_ = nx.ones((r,1), dtype=int), nx.ones((r,1), dtype=int)
-        q1, q2 = nx.ones((r,1), dtype=int), nx.ones((r,1), dtype=int)
-        g_ = epsilon3 
+        q3_1, q3_2 = nx.ones((r,1)), nx.ones((r,1))
+        v1_, v2_ = nx.ones((r,1)), nx.ones((r,1))
+        q1, q2 = nx.ones((r,1)), nx.ones((r,1))
+        g_ = epsilon3
         
         if err > stopThr:
             u1 = a / (epsilon1 @ v1_)
@@ -3884,3 +3885,7 @@ def lowrank_sinkhorn(a, b, M, reg=0, metric='sqeuclidean',
     
     # Return OT matrix 
     return nx.dot(M, nx.diag(1/g) * (Q @ R.T))
+
+
+
+ 
